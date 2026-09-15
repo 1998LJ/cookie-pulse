@@ -12,10 +12,10 @@
 `CookiePulse: Real-Time Network Telemetry & Account Inspector for Cookie Chain (SVM)`
 
 ### 2. Live Application URL
-`https://cookie-pulse.pages.dev` (或老大部署的 Live 托管链接)
+`https://1998lj.github.io/cookie-pulse/` (已上线，HTTP 200)
 
 ### 3. GitHub Repository URL
-`https://github.com/1998LJ/cookie-pulse`
+`https://github.com/1998LJ/cookie-pulse` (Release v1.0.0, commit: `634b634`)
 
 ### 4. Relevant Addresses & Endpoints
 - **Network**: Cookie Chain (SVM)
@@ -42,7 +42,7 @@
 > 
 > Monitor live slot progression, epoch cycles, inspect accounts & programs, and explore on-chain data directly from the Cookie Chain RPC.
 > 
-> 🔗 Live App: https://cookie-pulse.pages.dev
+> 🔗 Live App: https://1998lj.github.io/cookie-pulse/
 > 💻 GitHub: https://github.com/1998LJ/cookie-pulse
 > 
 > 🧵👇 (1/4)
@@ -80,7 +80,7 @@
 > 
 > Hi Cookie Chain Community! Excited to share **CookiePulse**, a real-time network intelligence, validator telemetry, and account inspector built natively for Cookie Chain SVM.
 > 
-> • **Live App**: https://cookie-pulse.pages.dev
+> • **Live App**: https://1998lj.github.io/cookie-pulse/
 > • **GitHub**: https://github.com/1998LJ/cookie-pulse
 > • **X Thread Demo**: [PASTE_X_THREAD_URL_HERE]
 > 
