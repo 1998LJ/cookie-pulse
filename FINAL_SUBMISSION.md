@@ -28,10 +28,14 @@
 > CookiePulse is a responsive, high-performance network intelligence and telemetry dashboard built natively for Cookie Chain (SVM). It provides real-time tracking of on-chain slots, epoch completion progress, block height, consensus blockhash, and transaction throughput. It includes a real-time Base58 account and program inspector, Nightly/Solana wallet connectivity to query live native balances, and an integrated guide for bridging assets using the official Cookie Chain Bridge.
 
 ### 6. X (Twitter) Demo Thread URL
-*(待独立 X 账号发布后自动填入)*
+`https://x.com/brigetfarfan/status/2099866611150995499`
 
 ### 7. Telegram Submission Status
-*(待独立 Telegram 账号发送至 t.me/TheCookieNetChain 后填入 Message Link / Evidence)*
+- **Status**: ✅ **Submitted**
+- **Channel**: [t.me/TheCookieNetChain](https://t.me/TheCookieNetChain) (Topic: Dev & Building)
+- **Account**: pailing
+- **Timestamp**: 2026-09-15 20:47 (CST)
+- **Status Verification**: Message delivered successfully with full app & repo links.
 
 ---
 
