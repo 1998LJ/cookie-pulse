@@ -2,11 +2,20 @@
 
 - **赛事**: Create an App on Cookie Chain
 - **平台**: Superteam Earn
-- **状态**: `[Submitted & Confirmed]` (界面已展示 "Edit Submission"，确认提交成功)
+- **状态**: `[Submitted – Requirements Verified]`
 - **项目名称**: CookiePulse
 - **Live dApp URL**: https://1998lj.github.io/cookie-pulse/
-- **GitHub Repository**: https://github.com/1998LJ/cookie-pulse (commit: `b103893`)
+- **GitHub Repository**: https://github.com/1998LJ/cookie-pulse (commit: `140d181`)
 - **X (Twitter) Demo Thread**: https://x.com/brigetfarfan/status/2099866611150995499
 - **Telegram 提交记录**: 已在官方群 `@TheCookieNetChain` Dev & Building 板块发送
 - **提交时间**: 2026-09-15
-- **结果公布时间**: 2026-09-29
+- **结果公布时间 (Winner Announcement)**: 2026-09-28 (对齐 Superteam 官方日程)
+- **硬性需求闭环清单**:
+  - [x] SVM RPC 遥测 (Slot, Epoch, TPS, Blockhash)
+  - [x] Base58 账户与程序解析器
+  - [x] Nightly / Solana 钱包深度连接
+  - [x] 链上交易全生命周期 (Create -> Sign -> Broadcast -> Confirm/Finalize -> CookieScan)
+  - [x] 6 重异常与用户反馈边界处理 (Wallet rejection, insufficient funds, RPC timeout, blockhash expiry, simulation failure, on-chain failure)
+  - [x] 官方 Bridge 指引集成 (bridge.cookiechain.wtf)
+  - [x] X (Twitter) 演示线程发布
+  - [x] Telegram 社区提交证据
