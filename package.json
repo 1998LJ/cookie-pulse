@@ -1,0 +1,19 @@
+{
+  "name": "cookie-pulse",
+  "version": "1.0.0",
+  "description": "CookiePulse: Real-Time Network Analytics, Validator Telemetry & Account Inspector for Cookie Chain (SVM)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["cookie-chain", "svm", "solana", "analytics", "dashboard", "bounty"],
+  "author": "1998LJ",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/web3.js": "^1.98.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.14"
+  }
+}
