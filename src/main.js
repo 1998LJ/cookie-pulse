@@ -1,4 +1,4 @@
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 
 // Cookie Chain RPC Configuration
 export const COOKIE_RPC_ENDPOINT = 'https://rpc.cookiescan.io';
@@ -223,20 +223,134 @@ document.querySelectorAll('.chip').forEach((chip) => {
   });
 });
 
-// Test Self Ping
-elBtnSelfPing.addEventListener('click', async () => {
+// Record Pulse On-chain: full transaction lifecycle
+// Supports SPL Memo instruction for verified on-chain telemetry attestations
+export const SPL_MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+
+async function recordPulseOnChain() {
   if (!state.walletProvider || !state.walletAddress) {
-    showToast('Please connect your wallet first');
+    showToast('Please connect your Nightly / Solana wallet first');
     return;
   }
-  showToast('Initiating read-only ping test on Cookie Chain...');
+
+  const pulseBtn = elBtnSelfPing;
+  const originalText = pulseBtn.innerHTML;
+
   try {
-    const blockhash = await connection.getLatestBlockhash();
-    showToast(`Blockhash verified: ${blockhash.blockhash.slice(0, 10)}... Network ready!`);
-  } catch (e) {
-    showToast(`Ping failed: ${e.message}`);
+    pulseBtn.disabled = true;
+    pulseBtn.innerHTML = '<span class="spinner"></span> Preparing Tx...';
+    showToast('Building on-chain Pulse attestation transaction...');
+
+    const userPubkey = new PublicKey(state.walletAddress);
+
+    // Check balance first
+    const balance = await connection.getBalance(userPubkey);
+    if (balance === 0) {
+      showToast('Insufficient funds on Cookie Chain for gas. Please bridge assets at bridge.cookiechain.wtf');
+      pulseBtn.disabled = false;
+      pulseBtn.innerHTML = originalText;
+      return;
+    }
+
+    // 1. Fetch latest blockhash
+    pulseBtn.innerHTML = '<span class="spinner"></span> Fetching Blockhash...';
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+
+    // 2. Build Transaction with SPL Memo instruction
+    const memoData = Buffer.from(`CookiePulse:attest:${Date.now()}`);
+    const instruction = new TransactionInstruction({
+      keys: [{ pubkey: userPubkey, isSigner: true, isWritable: true }],
+      programId: SPL_MEMO_PROGRAM_ID,
+      data: memoData
+    });
+
+    const tx = new Transaction().add(instruction);
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = userPubkey;
+
+    // 3. Request Wallet Signature
+    pulseBtn.innerHTML = '<span class="spinner"></span> Requesting Signature...';
+    showToast('Please approve the transaction in your wallet...');
+    
+    let signedTx;
+    try {
+      if (state.walletProvider.signTransaction) {
+        signedTx = await state.walletProvider.signTransaction(tx);
+      } else {
+        throw new Error('Wallet does not support direct transaction signing');
+      }
+    } catch (signErr) {
+      console.warn('Wallet sign rejection:', signErr);
+      showToast(`Transaction rejected by user: ${signErr.message || 'Cancelled'}`);
+      pulseBtn.disabled = false;
+      pulseBtn.innerHTML = originalText;
+      return;
+    }
+
+    // 4. Broadcast Raw Transaction
+    pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasting...';
+    showToast('Broadcasting transaction to Cookie Chain RPC...');
+    
+    const rawTx = signedTx.serialize();
+    const signature = await connection.sendRawTransaction(rawTx, {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed'
+    });
+
+    showToast(`Tx broadcasted! Sig: ${signature.slice(0, 12)}... Confirming...`);
+
+    // 5. Confirmation Handling
+    pulseBtn.innerHTML = '<span class="spinner"></span> Confirming On-Chain...';
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight
+    }, 'confirmed');
+
+    if (confirmation.value.err) {
+      throw new Error(`On-chain execution failed: ${JSON.stringify(confirmation.value.err)}`);
+    }
+
+    // 6. Confirmed & Finalized Success
+    pulseBtn.innerHTML = '✅ Pulse Recorded!';
+    showToast(`🎉 Pulse Confirmed on Cookie Chain! Slot: ${confirmation.context.slot}`);
+    
+    // Update UI with transaction evidence
+    const txLink = `https://cookiescan.io/tx/${signature}`;
+    const resultBox = document.getElementById('tx-status-result');
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div class="alert alert-success mt-2">
+          <strong>Transaction Confirmed!</strong><br/>
+          <span>Signature: <code>${signature}</code></span><br/>
+          <span>Slot: ${confirmation.context.slot}</span><br/>
+          <a href="${txLink}" target="_blank" class="text-primary font-mono underline">View on CookieScan ↗</a>
+        </div>
+      `;
+    }
+
+    await refreshWalletBalance();
+
+    setTimeout(() => {
+      pulseBtn.disabled = false;
+      pulseBtn.innerHTML = originalText;
+    }, 8000);
+
+  } catch (err) {
+    console.error('Transaction failure:', err);
+    let errMsg = err.message || 'Unknown RPC failure';
+    if (errMsg.includes('block height exceeded') || errMsg.includes('expired')) {
+      errMsg = 'Blockhash expired before confirmation. Please retry.';
+    } else if (errMsg.includes('insufficient funds')) {
+      errMsg = 'Insufficient funds for transaction fee.';
+    }
+    showToast(`Transaction Failed: ${errMsg}`);
+    pulseBtn.disabled = false;
+    pulseBtn.innerHTML = originalText;
   }
-});
+}
+
+elBtnSelfPing.addEventListener('click', recordPulseOnChain);
 
 // Initial boot
 refreshTelemetry();

@@ -18,17 +18,21 @@
    - Live Base58 address lookup for standard accounts, executable programs, and token mints.
    - Decodes account owner, executable status, lamport balance, data size, and rent epoch.
    - Quick testing chips for core SVM programs (`System Program`, `SPL Token`, `Compute Budget`).
-3. **Wallet Connectivity**:
+3. **Full On-Chain Transaction Lifecycle (Record Pulse)**:
+   - Built-in transaction creation, signing, broadcast, and confirmation flow using Cookie Chain's native SPL Memo Program (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`).
+   - Requests user signature via Nightly / Solana wallets, broadcasts raw transaction to RPC, and confirms with blockhash expiry handling.
+   - Full client error handling: wallet rejection, insufficient funds, expired blockhashes, simulation errors, and direct links to CookieScan transaction explorer.
+4. **Wallet Connectivity**:
    - Supports **Nightly Wallet** and standard Solana/SVM wallet providers.
    - Reads native `$COOKIE` wallet balances on Cookie Chain.
-4. **Cookie Chain Bridge Guide**:
+5. **Cookie Chain Bridge Guide**:
    - Integrated onboarding directing users to the [Cookie Chain Official Bridge](https://bridge.cookiechain.wtf) to bridge liquidity onto the SVM network.
 
 ---
 
 ## 🚀 Live Demo & Deployed URLs
 
-- **Live Application**: [https://cookie-pulse.pages.dev](https://cookie-pulse.pages.dev) (or local preview: `npm run preview`)
+- **Live Application**: [https://1998lj.github.io/cookie-pulse/](https://1998lj.github.io/cookie-pulse/)
 - **GitHub Repository**: [https://github.com/1998LJ/cookie-pulse](https://github.com/1998LJ/cookie-pulse)
 - **Cookie Chain Explorer**: [https://cookiescan.io](https://cookiescan.io)
 - **Cookie Chain RPC**: `https://rpc.cookiescan.io`
