@@ -4,7 +4,7 @@ import { Connection, PublicKey, Transaction, TransactionInstruction } from '@sol
 export const COOKIE_RPC_ENDPOINT = 'https://rpc.cookiescan.io';
 export const COOKIE_GENESIS_HASH = '9wDaBRDgArEUpvhHxGguNkwozsZh4UpGZB9o2EoEcBB2';
 export const COOKIE_EXPLORER = 'https://cookiescan.io';
-export const COOKIE_BRIDGE_URL = 'https://bridge.cookiechain.wtf';
+export const COOKIE_BRIDGE_URL = 'https://hyperlane.cookiescan.io';
 
 export const connection = new Connection(COOKIE_RPC_ENDPOINT, 'confirmed');
 
@@ -246,7 +246,7 @@ async function recordPulseOnChain() {
     // Check balance first
     const balance = await connection.getBalance(userPubkey);
     if (balance === 0) {
-      showToast('Insufficient funds on Cookie Chain for gas. Please bridge assets at bridge.cookiechain.wtf');
+      showToast('Insufficient funds on Cookie Chain for gas. Please bridge assets at hyperlane.cookiescan.io');
       pulseBtn.disabled = false;
       pulseBtn.innerHTML = originalText;
       return;
@@ -254,11 +254,20 @@ async function recordPulseOnChain() {
 
     // 1. Fetch latest blockhash
     pulseBtn.innerHTML = '<span class="spinner"></span> Fetching Blockhash...';
+    // Check network / genesisHash alignment if Nightly exposes it
+    if (typeof state.walletProvider.changeNetwork === 'function') {
+      try {
+        await state.walletProvider.changeNetwork('cookiechain');
+      } catch (netErr) {
+        console.log('Wallet network check/change:', netErr);
+      }
+    }
+
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
 
     // 2. Build Transaction with SPL Memo instruction
     // Complete network telemetry payload
-    const curSlot = state.telemetryData?.slot || 'unknown';
+    const curSlot = state.latestSlot || (await connection.getSlot('confirmed')) || 0;
     const memoPayload = `CookiePulse|v1.0.0|net:cookie-svm|slot:${curSlot}|ts:${Date.now()}`;
     const memoData = Buffer.from(memoPayload);
     const instruction = new TransactionInstruction({
@@ -277,12 +286,21 @@ async function recordPulseOnChain() {
 
     let signature;
     try {
-      if (typeof state.walletProvider.signAndSendTransaction === 'function') {
-        // Modern Nightly / Wallet Standard path
+      // Check standard:signAndSendTransaction or provider.signAndSendTransaction
+      const stdSignAndSend = state.walletProvider.features && state.walletProvider.features['standard:signAndSendTransaction'];
+      
+      if (stdSignAndSend && typeof stdSignAndSend.signAndSendTransaction === 'function') {
+        const [chainRes] = await stdSignAndSend.signAndSendTransaction({
+          account: state.walletProvider.accounts ? state.walletProvider.accounts[0] : undefined,
+          chain: 'solana:cookiechain',
+          transaction: tx.serialize({ requireAllSignatures: false })
+        });
+        signature = typeof chainRes.signature === 'string' ? chainRes.signature : (chainRes.signature ? new it(chainRes.signature).toBase58() : null);
+      } else if (typeof state.walletProvider.signAndSendTransaction === 'function') {
         const res = await state.walletProvider.signAndSendTransaction(tx);
         signature = res.signature || res;
       } else if (typeof state.walletProvider.signTransaction === 'function') {
-        // Fallback to sign + manual RPC broadcast
+        // Fallback to sign + client sendRawTransaction
         const signedTx = await state.walletProvider.signTransaction(tx);
         pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasting...';
         showToast('Broadcasting transaction to Cookie Chain RPC...');
@@ -291,7 +309,7 @@ async function recordPulseOnChain() {
           preflightCommitment: 'confirmed'
         });
       } else {
-        throw new Error('Wallet provider does not support transaction signing');
+        throw new Error('Wallet does not support transaction signing');
       }
     } catch (signErr) {
       console.warn('Wallet signing rejection:', signErr);

@@ -16,8 +16,8 @@
   - [x] Nightly / Solana 钱包能力自适应 (signAndSendTransaction vs signTransaction fallback)
   - [x] 交易全生命周期流转 (Broadcasted -> Confirmed -> Finalized)
   - [x] 完整链上 Memo 遥测载荷 (`CookiePulse|v1.0.0|net:cookie-svm|slot:<slot>|ts:<ts>`)
-  - [x] 6 重异常与用户反馈边界处理 (Wallet rejection, insufficient funds, RPC timeout, blockhash expiry, simulation failure, on-chain failure)
-  - [x] 官方 Bridge 指引集成 (bridge.cookiechain.wtf)
+  - [x] 异常与用户反馈处理 (Wallet rejection, insufficient funds, RPC failure)
+  - [x] 官方 Bridge 指引集成 (hyperlane.cookiescan.io)
   - [x] X (Twitter) 演示线程发布
   - [x] Telegram 社区提交证据
-  - [ ] 真实 Nightly 链上上链交易哈希凭证 (待运行时真实广播并记录)
+  - [ ] 真实 Nightly 链上上链交易哈希凭证 (待运行时真实广播并记录，未拿到前绝不标 Closed)

@@ -21,7 +21,7 @@
 - **Network**: Cookie Chain (SVM)
 - **RPC Endpoint**: `https://rpc.cookiescan.io`
 - **Genesis Hash**: `9wDaBRDgArEUpvhHxGguNkwozsZh4UpGZB9o2EoEcBB2`
-- **Official Bridge**: `https://bridge.cookiechain.wtf`
+- **Official Bridge**: `https://hyperlane.cookiescan.io`
 - **Explorer**: `https://cookiescan.io`
 
 ### 5. Short Description (Pitch)
@@ -63,7 +63,7 @@
 **Tweet 3 (Bridge Guidance):**
 > 🌉 New to Cookie Chain? 
 > 
-> CookiePulse features an integrated onboarding guide directing users to the Official Cookie Chain Bridge (https://bridge.cookiechain.wtf). Seamlessly bridge your liquidity into the SVM high-throughput ecosystem to start interacting!
+> CookiePulse features an integrated onboarding guide directing users to the Official Cookie Chain Bridge (https://hyperlane.cookiescan.io). Seamlessly bridge your liquidity into the SVM high-throughput ecosystem to start interacting!
 > 
 > (3/4)
 

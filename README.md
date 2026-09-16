@@ -26,7 +26,7 @@
    - Supports **Nightly Wallet** and standard Solana/SVM wallet providers.
    - Reads native `$COOKIE` wallet balances on Cookie Chain.
 5. **Cookie Chain Bridge Guide**:
-   - Integrated onboarding directing users to the [Cookie Chain Official Bridge](https://bridge.cookiechain.wtf) to bridge liquidity onto the SVM network.
+   - Integrated onboarding directing users to the [Cookie Chain Official Bridge](https://hyperlane.cookiescan.io) to bridge liquidity onto the SVM network.
 
 ---
 
