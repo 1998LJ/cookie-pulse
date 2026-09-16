@@ -5,7 +5,7 @@
 - **状态**: `[Submitted – Transaction Patch Deployed / Runtime Verification Pending]`
 - **项目名称**: CookiePulse
 - **Live dApp URL**: https://1998lj.github.io/cookie-pulse/
-- **GitHub Repository**: https://github.com/1998LJ/cookie-pulse
+- **GitHub Repository**: https://github.com/1998LJ/cookie-pulse (commit: `3c4cf14`)
 - **X (Twitter) Demo Thread**: https://x.com/brigetfarfan/status/2099866611150995499
 - **Telegram 提交记录**: 已在官方群 `@TheCookieNetChain` Dev & Building 板块发送
 - **提交时间**: 2026-09-15
@@ -13,11 +13,11 @@
 - **硬性需求闭环清单**:
   - [x] SVM RPC 遥测 (Slot, Epoch, TPS, Blockhash)
   - [x] Base58 账户与程序解析器
-  - [x] Nightly / Solana 钱包能力自适应 (signAndSendTransaction vs signTransaction fallback)
-  - [x] 交易全生命周期流转 (Broadcasted -> Confirmed -> Finalized)
-  - [x] 完整链上 Memo 遥测载荷 (`CookiePulse|v1.0.0|net:cookie-svm|slot:<slot>|ts:<ts>`)
-  - [x] 异常与用户反馈处理 (Wallet rejection, insufficient funds, RPC failure)
-  - [x] 官方 Bridge 指引集成 (hyperlane.cookiescan.io)
+  - [x] Nightly 官方 Wallet Standard 规范检测与 fallback
+  - [x] 交易全生命周期流转 (Broadcasted -> Confirmed -> Finalized 轮询)
+  - [x] 真实链上 Memo 遥测载荷 (`CookiePulse|v1.0.0|net:cookie-svm|slot:<latestSlot>|ts:<ts>`)
+  - [x] 基础异常与用户反馈处理 (Wallet rejection, insufficient funds, RPC failure)
+  - [x] 官方 Hyperlane Bridge 指引集成 (hyperlane.cookiescan.io)
   - [x] X (Twitter) 演示线程发布
   - [x] Telegram 社区提交证据
   - [ ] 真实 Nightly 链上上链交易哈希凭证 (待运行时真实广播并记录，未拿到前绝不标 Closed)
