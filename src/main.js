@@ -164,8 +164,26 @@ export async function connectWallet() {
   }
 
   try {
-    const res = await provider.connect();
-    const pubkey = provider.publicKey || res.publicKey;
+    let res;
+    // Check standard:connect feature
+    const stdConnect = provider.features && provider.features['standard:connect'];
+    if (stdConnect && typeof stdConnect.connect === 'function') {
+      const connRes = await stdConnect.connect();
+      if (connRes && connRes.accounts && connRes.accounts[0]) {
+        state.walletAccount = connRes.accounts[0];
+      }
+    }
+    
+    if (typeof provider.connect === 'function') {
+      res = await provider.connect();
+    }
+    
+    // Save account if available from provider
+    if (!state.walletAccount && provider.accounts && provider.accounts[0]) {
+      state.walletAccount = provider.accounts[0];
+    }
+
+    const pubkey = provider.publicKey || (res && res.publicKey) || (state.walletAccount && state.walletAccount.address);
     state.walletAddress = pubkey.toBase58 ? pubkey.toBase58() : pubkey.toString();
     state.walletProvider = provider;
 
@@ -306,11 +324,25 @@ async function recordPulseOnChain() {
       const stdSignAndSend = state.walletProvider.features && state.walletProvider.features['standard:signAndSendTransaction'];
       
       if (stdSignAndSend && typeof stdSignAndSend.signAndSendTransaction === 'function') {
-        const connectedAccount = state.walletProvider.accounts ? state.walletProvider.accounts[0] : undefined;
-        // Dynamically discover actual chain identifier from account chains, falling back to 'solana:mainnet' or similar standard format
-        let targetChain = 'solana:mainnet';
-        if (connectedAccount && Array.isArray(connectedAccount.chains) && connectedAccount.chains.length > 0) {
-          targetChain = connectedAccount.chains.find(c => c.includes('cookie') || c.includes('solana')) || connectedAccount.chains[0];
+        const connectedAccount = state.walletAccount || (state.walletProvider.accounts ? state.walletProvider.accounts[0] : undefined);
+        if (!connectedAccount) {
+          throw new Error('Wallet Standard account not found. Please reconnect wallet.');
+        }
+
+        // Determine Cookie Chain identifier strictly without guesswork or fallback to solana:mainnet
+        let targetChain = null;
+        if (Array.isArray(connectedAccount.chains)) {
+          // Explicit Cookie Chain matches
+          targetChain = connectedAccount.chains.find(c => 
+            c === 'cookiechain' || 
+            c === 'cookiechain:mainnet' || 
+            c === `solana:${COOKIE_GENESIS_HASH}` || 
+            c.includes('cookie')
+          );
+        }
+
+        if (!targetChain) {
+          throw new Error(`Cannot verify Cookie Chain identifier in wallet account chains: [${(connectedAccount.chains || []).join(', ')}]. Transaction halted to avoid wrong network.`);
         }
 
         const [chainRes] = await stdSignAndSend.signAndSendTransaction({
