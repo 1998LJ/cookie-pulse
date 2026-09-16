@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CookiePulse - Cookie Chain Network Monitor & Account Inspector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="./assets/index-iuA7Gid2.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-By5m4ejZ.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="brand">
+        <span class="brand-icon">🍪</span>
+        <div class="brand-title-group">
+          <h1 class="brand-title">CookiePulse</h1>
+          <span class="badge badge-network">Cookie Chain SVM</span>
+        </div>
+      </div>
+      <div class="nav-controls">
+        <div class="rpc-status-pill">
+          <span class="status-indicator live"></span>
+          <span id="rpc-status-text">RPC: Connecting...</span>
+        </div>
+        <button id="btn-connect-wallet" class="btn btn-primary">
+          <span class="wallet-icon">👛</span>
+          <span id="wallet-btn-text">Connect Nightly / Solana Wallet</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container">
+      <!-- Network Banner / Stats Row -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Current Slot</div>
+          <div class="stat-value" id="val-slot">--</div>
+          <div class="stat-sub" id="sub-blockheight">Block Height: --</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Epoch & Progress</div>
+          <div class="stat-value" id="val-epoch">--</div>
+          <div class="stat-progress-bar">
+            <div class="progress-fill" id="val-epoch-progress" style="width: 0%"></div>
+          </div>
+          <div class="stat-sub" id="sub-epoch-slots">-- / 432,000 slots</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Transactions</div>
+          <div class="stat-value" id="val-txcount">--</div>
+          <div class="stat-sub" id="sub-tps">Live Throughput: ~ Active</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Solana Core Runtime</div>
+          <div class="stat-value" id="val-runtime-version">--</div>
+          <div class="stat-sub" id="sub-feature-set">Feature Set: --</div>
+        </div>
+      </section>
+
+      <!-- Action Panel & Bridge Guidance -->
+      <section class="action-grid">
+        <!-- Wallet & Test Interaction -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3>⚡ Wallet & Live Chain Interactions</h3>
+            <span class="panel-badge">Interactive</span>
+          </div>
+          <div class="panel-body">
+            <div id="wallet-info" class="wallet-info-box hidden">
+              <div class="info-row">
+                <span class="info-label">Connected Wallet:</span>
+                <span class="info-val font-mono" id="val-wallet-address">--</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Cookie Chain Native Balance:</span>
+                <span class="info-val font-mono highlight" id="val-wallet-balance">--</span>
+              </div>
+            </div>
+            
+            <div class="interaction-buttons">
+              <button id="btn-refresh-chain" class="btn btn-secondary">🔄 Refresh Live Telemetry</button>
+              <button id="btn-query-bridge" class="btn btn-secondary">🌉 Check Official Bridge</button>
+              <button id="btn-self-ping" class="btn btn-primary btn-block" disabled>⚡ Record Pulse On-Chain (SPL Memo Attestation)</button>
+              <div id="tx-status-result" class="mt-2"></div>
+            </div>
+
+            <!-- Official Bridge Guide Card (Submission Requirement) -->
+            <div class="bridge-card">
+              <div class="bridge-card-header">
+                <span class="bridge-icon">🌉</span>
+                <strong>Cookie Chain Official Bridge Guide</strong>
+              </div>
+              <p class="bridge-text">
+                Need assets on Cookie Chain? Use the official portal to bridge tokens seamlessly to your SVM address:
+              </p>
+              <div class="bridge-action-row">
+                <a href="https://hyperlane.cookiescan.io" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-accent">
+                  Open Official Bridge &rarr;
+                </a>
+                <a href="https://docs.cookiechain.wtf" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-ghost">
+                  Read Bridge Docs
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account / Transaction Inspector -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3>🔍 Real-Time Account Inspector</h3>
+            <span class="panel-badge">On-Chain Query</span>
+          </div>
+          <div class="panel-body">
+            <p class="desc">Enter any base58 Solana/Cookie address or program ID to inspect live state:</p>
+            <div class="search-box">
+              <input type="text" id="input-account-pubkey" placeholder="Enter base58 address (e.g. SystemProgram, TokenProgram, or wallet)..." class="input-text">
+              <button id="btn-inspect-account" class="btn btn-primary">Inspect</button>
+            </div>
+            <div class="quick-chips">
+              <span class="chip-label">Quick test:</span>
+              <button class="chip" data-addr="11111111111111111111111111111111">System Program</button>
+              <button class="chip" data-addr="TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">SPL Token</button>
+              <button class="chip" data-addr="ComputeBudget111111111111111111111111111111">Compute Budget</button>
+            </div>
+
+            <div id="inspector-result" class="inspector-output hidden">
+              <div class="result-header">
+                <strong>Account State</strong>
+                <span class="badge" id="badge-executable">Not Executable</span>
+              </div>
+              <div class="result-details font-mono" id="inspector-details">
+                <!-- Dynamic injected details -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Network Blockhash & Genesis Info -->
+      <section class="panel">
+        <div class="panel-header">
+          <h3>🧬 Cookie Chain Consensus & Genesis Architecture</h3>
+          <span class="badge badge-network">Consensus Layer</span>
+        </div>
+        <div class="panel-body">
+          <div class="consensus-grid">
+            <div class="consensus-item">
+              <span class="item-label">Genesis Hash:</span>
+              <span class="item-val font-mono" id="val-genesis-hash">9wDaBRDgArEUpvhHxGguNkwozsZh4UpGZB9o2EoEcBB2</span>
+            </div>
+            <div class="consensus-item">
+              <span class="item-label">Latest Valid Blockhash:</span>
+              <span class="item-val font-mono" id="val-latest-blockhash">--</span>
+            </div>
+            <div class="consensus-item">
+              <span class="item-label">RPC Endpoint:</span>
+              <span class="item-val font-mono">https://rpc.cookiescan.io</span>
+            </div>
+            <div class="consensus-item">
+              <span class="item-label">Explorer & Indexer:</span>
+              <span class="item-val font-mono"><a href="https://cookiescan.io" target="_blank" class="link">cookiescan.io</a></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Live Notification Toast -->
+      <div id="toast" class="toast hidden"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div>
+        Built with 🍪 for <strong>Cookie Chain SVM</strong> Hackathon & Bounty • Fully Client-Side & Open Source
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/1998LJ/cookie-pulse" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://docs.cookiechain.wtf" target="_blank" rel="noopener">Docs</a>
+        <a href="https://hyperlane.cookiescan.io" target="_blank" rel="noopener">Bridge</a>
+      </div>
+    </footer>
+  </div>
+
+</body>
+</html>
