@@ -2,10 +2,10 @@
 
 - **赛事**: Create an App on Cookie Chain
 - **平台**: Superteam Earn
-- **状态**: `[Submitted – Requirements Verified]`
+- **状态**: `[Submitted – Transaction Patch Deployed / Runtime Verification Pending]`
 - **项目名称**: CookiePulse
 - **Live dApp URL**: https://1998lj.github.io/cookie-pulse/
-- **GitHub Repository**: https://github.com/1998LJ/cookie-pulse (commit: `140d181`)
+- **GitHub Repository**: https://github.com/1998LJ/cookie-pulse
 - **X (Twitter) Demo Thread**: https://x.com/brigetfarfan/status/2099866611150995499
 - **Telegram 提交记录**: 已在官方群 `@TheCookieNetChain` Dev & Building 板块发送
 - **提交时间**: 2026-09-15
@@ -13,9 +13,11 @@
 - **硬性需求闭环清单**:
   - [x] SVM RPC 遥测 (Slot, Epoch, TPS, Blockhash)
   - [x] Base58 账户与程序解析器
-  - [x] Nightly / Solana 钱包深度连接
-  - [x] 链上交易全生命周期 (Create -> Sign -> Broadcast -> Confirm/Finalize -> CookieScan)
+  - [x] Nightly / Solana 钱包能力自适应 (signAndSendTransaction vs signTransaction fallback)
+  - [x] 交易全生命周期流转 (Broadcasted -> Confirmed -> Finalized)
+  - [x] 完整链上 Memo 遥测载荷 (`CookiePulse|v1.0.0|net:cookie-svm|slot:<slot>|ts:<ts>`)
   - [x] 6 重异常与用户反馈边界处理 (Wallet rejection, insufficient funds, RPC timeout, blockhash expiry, simulation failure, on-chain failure)
   - [x] 官方 Bridge 指引集成 (bridge.cookiechain.wtf)
   - [x] X (Twitter) 演示线程发布
   - [x] Telegram 社区提交证据
+  - [ ] 真实 Nightly 链上上链交易哈希凭证 (待运行时真实广播并记录)

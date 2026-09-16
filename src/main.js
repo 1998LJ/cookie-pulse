@@ -257,7 +257,10 @@ async function recordPulseOnChain() {
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
 
     // 2. Build Transaction with SPL Memo instruction
-    const memoData = Buffer.from(`CookiePulse:attest:${Date.now()}`);
+    // Complete network telemetry payload
+    const curSlot = state.telemetryData?.slot || 'unknown';
+    const memoPayload = `CookiePulse|v1.0.0|net:cookie-svm|slot:${curSlot}|ts:${Date.now()}`;
+    const memoData = Buffer.from(memoPayload);
     const instruction = new TransactionInstruction({
       keys: [{ pubkey: userPubkey, isSigner: true, isWritable: true }],
       programId: SPL_MEMO_PROGRAM_ID,
@@ -268,62 +271,101 @@ async function recordPulseOnChain() {
     tx.recentBlockhash = blockhash;
     tx.feePayer = userPubkey;
 
-    // 3. Request Wallet Signature
+    // 3. Wallet Signing & Broadcast (Adaptive: signAndSendTransaction vs signTransaction)
     pulseBtn.innerHTML = '<span class="spinner"></span> Requesting Signature...';
     showToast('Please approve the transaction in your wallet...');
-    
-    let signedTx;
+
+    let signature;
     try {
-      if (state.walletProvider.signTransaction) {
-        signedTx = await state.walletProvider.signTransaction(tx);
+      if (typeof state.walletProvider.signAndSendTransaction === 'function') {
+        // Modern Nightly / Wallet Standard path
+        const res = await state.walletProvider.signAndSendTransaction(tx);
+        signature = res.signature || res;
+      } else if (typeof state.walletProvider.signTransaction === 'function') {
+        // Fallback to sign + manual RPC broadcast
+        const signedTx = await state.walletProvider.signTransaction(tx);
+        pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasting...';
+        showToast('Broadcasting transaction to Cookie Chain RPC...');
+        signature = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed'
+        });
       } else {
-        throw new Error('Wallet does not support direct transaction signing');
+        throw new Error('Wallet provider does not support transaction signing');
       }
     } catch (signErr) {
-      console.warn('Wallet sign rejection:', signErr);
-      showToast(`Transaction rejected by user: ${signErr.message || 'Cancelled'}`);
+      console.warn('Wallet signing rejection:', signErr);
+      showToast(`Transaction cancelled / rejected: ${signErr.message || 'User declined'}`);
       pulseBtn.disabled = false;
       pulseBtn.innerHTML = originalText;
       return;
     }
 
-    // 4. Broadcast Raw Transaction
-    pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasting...';
-    showToast('Broadcasting transaction to Cookie Chain RPC...');
-    
-    const rawTx = signedTx.serialize();
-    const signature = await connection.sendRawTransaction(rawTx, {
-      skipPreflight: false,
-      preflightCommitment: 'confirmed'
-    });
+    if (!signature) {
+      throw new Error('No transaction signature received from wallet provider');
+    }
 
-    showToast(`Tx broadcasted! Sig: ${signature.slice(0, 12)}... Confirming...`);
+    // Step 4: Broadcasted State
+    pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasted, Waiting Confirmation...';
+    showToast(`Tx Broadcasted! Sig: ${signature.slice(0, 12)}...`);
 
-    // 5. Confirmation Handling
-    pulseBtn.innerHTML = '<span class="spinner"></span> Confirming On-Chain...';
-    const confirmation = await connection.confirmTransaction({
+    const txLink = `https://cookiescan.io/tx/${signature}`;
+    const resultBox = document.getElementById('tx-status-result');
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div class="alert alert-info mt-2">
+          <strong>Step 1/2: Broadcasted</strong><br/>
+          <span>Signature: <code>${signature}</code></span><br/>
+          <span>Status: Awaiting Confirmed block...</span>
+        </div>
+      `;
+    }
+
+    // Step 5: Confirmed Stage
+    pulseBtn.innerHTML = '<span class="spinner"></span> Confirming (Confirmed)...';
+    const confResult = await connection.confirmTransaction({
       signature,
       blockhash,
       lastValidBlockHeight
     }, 'confirmed');
 
-    if (confirmation.value.err) {
-      throw new Error(`On-chain execution failed: ${JSON.stringify(confirmation.value.err)}`);
+    if (confResult.value.err) {
+      throw new Error(`On-chain execution failed: ${JSON.stringify(confResult.value.err)}`);
     }
 
-    // 6. Confirmed & Finalized Success
-    pulseBtn.innerHTML = '✅ Pulse Recorded!';
-    showToast(`🎉 Pulse Confirmed on Cookie Chain! Slot: ${confirmation.context.slot}`);
-    
-    // Update UI with transaction evidence
-    const txLink = `https://cookiescan.io/tx/${signature}`;
-    const resultBox = document.getElementById('tx-status-result');
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div class="alert alert-info mt-2">
+          <strong>Step 2/3: Confirmed On-Chain!</strong><br/>
+          <span>Signature: <code>${signature}</code></span><br/>
+          <span>Slot: ${confResult.context.slot}</span><br/>
+          <span>Status: Waiting for Finalized commit...</span>
+        </div>
+      `;
+    }
+
+    // Step 6: Finalized Stage (Strict Acceptance Criteria)
+    pulseBtn.innerHTML = '<span class="spinner"></span> Waiting for Finalized...';
+    const finalResult = await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight
+    }, 'finalized');
+
+    if (finalResult.value.err) {
+      throw new Error(`On-chain finalization failed: ${JSON.stringify(finalResult.value.err)}`);
+    }
+
+    // Final Success State
+    pulseBtn.innerHTML = '✅ Finalized On-Chain!';
+    showToast(`🎉 Pulse Finalized on Cookie Chain! Finalized Slot: ${finalResult.context.slot}`);
+
     if (resultBox) {
       resultBox.innerHTML = `
         <div class="alert alert-success mt-2">
-          <strong>Transaction Confirmed!</strong><br/>
+          <strong>🎉 Transaction Finalized!</strong><br/>
           <span>Signature: <code>${signature}</code></span><br/>
-          <span>Slot: ${confirmation.context.slot}</span><br/>
+          <span>Confirmed Slot: ${confResult.context.slot} | Finalized Slot: ${finalResult.context.slot}</span><br/>
           <a href="${txLink}" target="_blank" class="text-primary font-mono underline">View on CookieScan ↗</a>
         </div>
       `;
