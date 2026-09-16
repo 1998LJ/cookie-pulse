@@ -7,11 +7,19 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "keywords": ["cookie-chain", "svm", "solana", "analytics", "dashboard", "bounty"],
+  "keywords": [
+    "cookie-chain",
+    "svm",
+    "solana",
+    "analytics",
+    "dashboard",
+    "bounty"
+  ],
   "author": "1998LJ",
   "license": "MIT",
   "dependencies": {
-    "@solana/web3.js": "^1.98.0"
+    "@solana/web3.js": "^1.98.0",
+    "bs58": "^6.0.0"
   },
   "devDependencies": {
     "vite": "^5.4.14"

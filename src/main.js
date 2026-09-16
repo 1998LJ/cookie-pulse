@@ -1,4 +1,5 @@
 import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
+import bs58 from 'bs58';
 
 // Cookie Chain RPC Configuration
 export const COOKIE_RPC_ENDPOINT = 'https://rpc.cookiescan.io';
@@ -254,13 +255,28 @@ async function recordPulseOnChain() {
 
     // 1. Fetch latest blockhash
     pulseBtn.innerHTML = '<span class="spinner"></span> Fetching Blockhash...';
-    // Check network / genesisHash alignment if Nightly exposes it
+    // Check network / genesisHash alignment with Nightly official changeNetwork form
     if (typeof state.walletProvider.changeNetwork === 'function') {
       try {
-        await state.walletProvider.changeNetwork('cookiechain');
+        await state.walletProvider.changeNetwork({
+          genesisHash: COOKIE_GENESIS_HASH,
+          url: COOKIE_RPC_ENDPOINT
+        });
       } catch (netErr) {
-        console.log('Wallet network check/change:', netErr);
+        console.error('Nightly changeNetwork error:', netErr);
+        showToast(`Failed to switch network: ${netErr.message || 'Unknown network error'}`);
+        pulseBtn.disabled = false;
+        pulseBtn.innerHTML = originalText;
+        return;
       }
+    }
+
+    // Verify wallet network genesisHash strictly aligns
+    if (state.walletProvider.genesisHash && state.walletProvider.genesisHash !== COOKIE_GENESIS_HASH) {
+      showToast(`Network mismatch: Wallet connected to ${state.walletProvider.genesisHash.slice(0, 8)}..., expected Cookie Chain (${COOKIE_GENESIS_HASH.slice(0, 8)}...).`);
+      pulseBtn.disabled = false;
+      pulseBtn.innerHTML = originalText;
+      return;
     }
 
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
@@ -290,15 +306,32 @@ async function recordPulseOnChain() {
       const stdSignAndSend = state.walletProvider.features && state.walletProvider.features['standard:signAndSendTransaction'];
       
       if (stdSignAndSend && typeof stdSignAndSend.signAndSendTransaction === 'function') {
+        const connectedAccount = state.walletProvider.accounts ? state.walletProvider.accounts[0] : undefined;
+        // Dynamically discover actual chain identifier from account chains, falling back to 'solana:mainnet' or similar standard format
+        let targetChain = 'solana:mainnet';
+        if (connectedAccount && Array.isArray(connectedAccount.chains) && connectedAccount.chains.length > 0) {
+          targetChain = connectedAccount.chains.find(c => c.includes('cookie') || c.includes('solana')) || connectedAccount.chains[0];
+        }
+
         const [chainRes] = await stdSignAndSend.signAndSendTransaction({
-          account: state.walletProvider.accounts ? state.walletProvider.accounts[0] : undefined,
-          chain: 'solana:cookiechain',
+          account: connectedAccount,
+          chain: targetChain,
           transaction: tx.serialize({ requireAllSignatures: false })
         });
-        signature = typeof chainRes.signature === 'string' ? chainRes.signature : (chainRes.signature ? new it(chainRes.signature).toBase58() : null);
+        
+        if (typeof chainRes.signature === 'string') {
+          signature = chainRes.signature;
+        } else if (chainRes.signature instanceof Uint8Array || Array.isArray(chainRes.signature)) {
+          signature = bs58.encode(Uint8Array.from(chainRes.signature));
+        } else {
+          signature = String(chainRes.signature);
+        }
       } else if (typeof state.walletProvider.signAndSendTransaction === 'function') {
         const res = await state.walletProvider.signAndSendTransaction(tx);
-        signature = res.signature || res;
+        signature = typeof res === 'object' && res.signature ? res.signature : res;
+        if (signature instanceof Uint8Array) {
+          signature = bs58.encode(signature);
+        }
       } else if (typeof state.walletProvider.signTransaction === 'function') {
         // Fallback to sign + client sendRawTransaction
         const signedTx = await state.walletProvider.signTransaction(tx);
