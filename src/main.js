@@ -304,6 +304,23 @@ async function recordPulseOnChain() {
       return;
     }
 
+    // Step 1.2: For Wallet Standard, re-acquire WalletAccount AFTER changeNetwork
+    if (state.isWalletStandard) {
+      const stdConnect = state.walletProvider.features && state.walletProvider.features['standard:connect'];
+      if (!stdConnect || typeof stdConnect.connect !== 'function') {
+        throw new Error('Wallet Standard connect feature unavailable after changeNetwork');
+      }
+      const connRes = await stdConnect.connect();
+      if (!connRes || !connRes.accounts || connRes.accounts.length === 0) {
+        throw new Error('Wallet Standard re-connect returned no accounts after network switch');
+      }
+      const freshAccount = connRes.accounts[0];
+      if (freshAccount.address !== state.walletAddress) {
+        throw new Error(`Account address changed after network switch (got ${freshAccount.address}, expected ${state.walletAddress})`);
+      }
+      state.walletAccount = freshAccount;
+    }
+
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
 
     // 2. Build Transaction with SPL Memo instruction
@@ -327,27 +344,29 @@ async function recordPulseOnChain() {
 
     let signature;
     try {
-      // Check standard:signAndSendTransaction or provider.signAndSendTransaction
-      const stdSignAndSend = state.walletProvider.features && state.walletProvider.features['standard:signAndSendTransaction'];
-      
-      if (stdSignAndSend && typeof stdSignAndSend.signAndSendTransaction === 'function') {
-        // Pure Wallet Standard path: strictly requires WalletAccount from standard:connect
+      if (state.isWalletStandard) {
+        // STRICT Wallet Standard Path: Zero fallback to legacy methods
+        const stdSignAndSend = state.walletProvider.features && state.walletProvider.features['standard:signAndSendTransaction'];
+        if (!stdSignAndSend || typeof stdSignAndSend.signAndSendTransaction !== 'function') {
+          throw new Error('Wallet Standard signing feature (standard:signAndSendTransaction) unavailable. Refusing fallback to legacy.');
+        }
+
         if (!state.walletAccount) {
-          throw new Error('Wallet Standard account not found. Please reconnect via standard:connect.');
+          throw new Error('Wallet Standard account not found after switch. Please reconnect.');
         }
 
         const accountChains = state.walletAccount.chains;
         if (!Array.isArray(accountChains) || accountChains.length === 0) {
-          throw new Error('WalletAccount contains no supported chains. Terminating transaction.');
+          throw new Error('Post-switch WalletAccount contains no supported chains. Terminating transaction.');
         }
 
         let targetChain = null;
         if (accountChains.length === 1) {
-          // Unambiguous single chain returned by connected wallet account
+          // Unambiguous single chain returned by wallet after switch
           targetChain = accountChains[0];
         } else {
-          // Multiple chains returned: halt and report chains unambiguously without guessing
-          throw new Error(`Multiple chains returned by WalletAccount: [${accountChains.join(', ')}]. Cannot disambiguate Cookie Chain without runtime verification. Transaction halted.`);
+          // Multiple chains or 0: halt without guesswork
+          throw new Error(`WalletAccount returned [${accountChains.join(', ')}] chains after switch. Cannot disambiguate Cookie Chain without runtime verification. Terminating.`);
         }
 
         const [chainRes] = await stdSignAndSend.signAndSendTransaction({
@@ -363,24 +382,25 @@ async function recordPulseOnChain() {
         } else {
           signature = String(chainRes.signature);
         }
-      } else if (typeof state.walletProvider.signAndSendTransaction === 'function') {
-        // Legacy provider path (isolated, not claiming standard)
-        const res = await state.walletProvider.signAndSendTransaction(tx);
-        signature = typeof res === 'object' && res.signature ? res.signature : res;
-        if (signature instanceof Uint8Array) {
-          signature = bs58.encode(signature);
-        }
-      } else if (typeof state.walletProvider.signTransaction === 'function') {
-        // Fallback legacy sign + client sendRawTransaction
-        const signedTx = await state.walletProvider.signTransaction(tx);
-        pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasting...';
-        showToast('Broadcasting transaction to Cookie Chain RPC...');
-        signature = await connection.sendRawTransaction(signedTx.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: 'confirmed'
-        });
       } else {
-        throw new Error('Wallet does not support transaction signing');
+        // STRICT Legacy Path: Only used when isWalletStandard === false
+        if (typeof state.walletProvider.signAndSendTransaction === 'function') {
+          const res = await state.walletProvider.signAndSendTransaction(tx);
+          signature = typeof res === 'object' && res.signature ? res.signature : res;
+          if (signature instanceof Uint8Array) {
+            signature = bs58.encode(signature);
+          }
+        } else if (typeof state.walletProvider.signTransaction === 'function') {
+          const signedTx = await state.walletProvider.signTransaction(tx);
+          pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasting...';
+          showToast('Broadcasting transaction to Cookie Chain RPC...');
+          signature = await connection.sendRawTransaction(signedTx.serialize(), {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed'
+          });
+        } else {
+          throw new Error('Legacy wallet provider does not support transaction signing');
+        }
       }
     } catch (signErr) {
       console.warn('Wallet signing rejection:', signErr);
