@@ -164,27 +164,31 @@ export async function connectWallet() {
   }
 
   try {
-    let res;
     // Check standard:connect feature
     const stdConnect = provider.features && provider.features['standard:connect'];
     if (stdConnect && typeof stdConnect.connect === 'function') {
-      const connRes = await stdConnect.connect();
-      if (connRes && connRes.accounts && connRes.accounts[0]) {
-        state.walletAccount = connRes.accounts[0];
+      // Pure Wallet Standard connection path - do not mix with legacy connect
+      const { accounts } = await stdConnect.connect();
+      if (!accounts || accounts.length === 0) {
+        throw new Error('Wallet Standard connect returned no accounts');
       }
-    }
-    
-    if (typeof provider.connect === 'function') {
-      res = await provider.connect();
-    }
-    
-    // Save account if available from provider
-    if (!state.walletAccount && provider.accounts && provider.accounts[0]) {
-      state.walletAccount = provider.accounts[0];
+      state.walletAccount = accounts[0];
+      state.walletAddress = accounts[0].address;
+      state.isWalletStandard = true;
+    } else if (typeof provider.connect === 'function') {
+      // Isolated Legacy connection path
+      const res = await provider.connect();
+      const pubkey = provider.publicKey || (res && res.publicKey);
+      if (!pubkey) {
+        throw new Error('Legacy connect returned no public key');
+      }
+      state.walletAddress = pubkey.toBase58 ? pubkey.toBase58() : pubkey.toString();
+      state.walletAccount = null;
+      state.isWalletStandard = false;
+    } else {
+      throw new Error('Unsupported wallet provider interface');
     }
 
-    const pubkey = provider.publicKey || (res && res.publicKey) || (state.walletAccount && state.walletAccount.address);
-    state.walletAddress = pubkey.toBase58 ? pubkey.toBase58() : pubkey.toString();
     state.walletProvider = provider;
 
     elWalletBtnText.textContent = `${state.walletAddress.slice(0, 4)}...${state.walletAddress.slice(-4)}`;
@@ -289,9 +293,12 @@ async function recordPulseOnChain() {
       }
     }
 
-    // Verify wallet network genesisHash strictly aligns
-    if (state.walletProvider.genesisHash && state.walletProvider.genesisHash !== COOKIE_GENESIS_HASH) {
-      showToast(`Network mismatch: Wallet connected to ${state.walletProvider.genesisHash.slice(0, 8)}..., expected Cookie Chain (${COOKIE_GENESIS_HASH.slice(0, 8)}...).`);
+    // Strictly enforce provider.genesisHash equals COOKIE_GENESIS_HASH; missing genesisHash is also treated as failure
+    if (state.walletProvider.genesisHash !== COOKIE_GENESIS_HASH) {
+      const actualHash = state.walletProvider.genesisHash || 'undefined';
+      const msg = `Nightly is not connected to Cookie Chain (got ${actualHash}, expected ${COOKIE_GENESIS_HASH})`;
+      console.error(msg);
+      showToast(msg);
       pulseBtn.disabled = false;
       pulseBtn.innerHTML = originalText;
       return;
@@ -324,29 +331,27 @@ async function recordPulseOnChain() {
       const stdSignAndSend = state.walletProvider.features && state.walletProvider.features['standard:signAndSendTransaction'];
       
       if (stdSignAndSend && typeof stdSignAndSend.signAndSendTransaction === 'function') {
-        const connectedAccount = state.walletAccount || (state.walletProvider.accounts ? state.walletProvider.accounts[0] : undefined);
-        if (!connectedAccount) {
-          throw new Error('Wallet Standard account not found. Please reconnect wallet.');
+        // Pure Wallet Standard path: strictly requires WalletAccount from standard:connect
+        if (!state.walletAccount) {
+          throw new Error('Wallet Standard account not found. Please reconnect via standard:connect.');
         }
 
-        // Determine Cookie Chain identifier strictly without guesswork or fallback to solana:mainnet
+        const accountChains = state.walletAccount.chains;
+        if (!Array.isArray(accountChains) || accountChains.length === 0) {
+          throw new Error('WalletAccount contains no supported chains. Terminating transaction.');
+        }
+
         let targetChain = null;
-        if (Array.isArray(connectedAccount.chains)) {
-          // Explicit Cookie Chain matches
-          targetChain = connectedAccount.chains.find(c => 
-            c === 'cookiechain' || 
-            c === 'cookiechain:mainnet' || 
-            c === `solana:${COOKIE_GENESIS_HASH}` || 
-            c.includes('cookie')
-          );
-        }
-
-        if (!targetChain) {
-          throw new Error(`Cannot verify Cookie Chain identifier in wallet account chains: [${(connectedAccount.chains || []).join(', ')}]. Transaction halted to avoid wrong network.`);
+        if (accountChains.length === 1) {
+          // Unambiguous single chain returned by connected wallet account
+          targetChain = accountChains[0];
+        } else {
+          // Multiple chains returned: halt and report chains unambiguously without guessing
+          throw new Error(`Multiple chains returned by WalletAccount: [${accountChains.join(', ')}]. Cannot disambiguate Cookie Chain without runtime verification. Transaction halted.`);
         }
 
         const [chainRes] = await stdSignAndSend.signAndSendTransaction({
-          account: connectedAccount,
+          account: state.walletAccount,
           chain: targetChain,
           transaction: tx.serialize({ requireAllSignatures: false })
         });
@@ -359,13 +364,14 @@ async function recordPulseOnChain() {
           signature = String(chainRes.signature);
         }
       } else if (typeof state.walletProvider.signAndSendTransaction === 'function') {
+        // Legacy provider path (isolated, not claiming standard)
         const res = await state.walletProvider.signAndSendTransaction(tx);
         signature = typeof res === 'object' && res.signature ? res.signature : res;
         if (signature instanceof Uint8Array) {
           signature = bs58.encode(signature);
         }
       } else if (typeof state.walletProvider.signTransaction === 'function') {
-        // Fallback to sign + client sendRawTransaction
+        // Fallback legacy sign + client sendRawTransaction
         const signedTx = await state.walletProvider.signTransaction(tx);
         pulseBtn.innerHTML = '<span class="spinner"></span> Broadcasting...';
         showToast('Broadcasting transaction to Cookie Chain RPC...');
