@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Run RepoGate Action
         id: repogate
-        uses: 1998LJ/t3n-repogate@v1.1.0
+        uses: 1998LJ/t3n-repogate@v1
         with:
           github-token: ${{ github.token }}
           pr-url: https://github.com/1998LJ/t3n-repogate/pull/3
